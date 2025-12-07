@@ -1,5 +1,6 @@
-import { instance } from '@/lib/axios'
-import NextAuth, { type Session, type NextAuthOptions } from 'next-auth'
+// src/app/api/auth/[...nextauth]/route.ts
+import { authenticateStudent } from '@/functions/students'
+import NextAuth, { type NextAuthOptions, type Session } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 
 const nextAuthOptions: NextAuthOptions = {
@@ -11,34 +12,54 @@ const nextAuthOptions: NextAuthOptions = {
         password: { label: 'password', type: 'password' },
       },
       async authorize(credentials) {
-        const response = await instance.post(
-          'https://deck-api.onrender.com/sessions',
-          {
-            email: credentials?.email,
-            password: credentials?.password,
-          },
-        )
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
 
-        return response.data
+        try {
+          const student = await authenticateStudent(
+            credentials.email,
+            credentials.password
+          )
+
+          return {
+            id: student.id,
+            email: student.email,
+            name: student.name,
+            username: student.username
+          }
+        } catch (error) {
+          console.error('Authentication error:', error)
+          return null
+        }
       },
     }),
   ],
   pages: {
     signIn: '/login',
   },
+  session: {
+    strategy: 'jwt'
+  },
   callbacks: {
-    // biome-ignore lint/suspicious/useAwait: This is a NextAuth callback
     async jwt({ token, user }) {
       if (user) {
-        token.user = user
+        token.id = user.id
+        token.email = user.email
+        token.name = user.name
+        token.username = (user as any).username
       }
-
       return token
     },
-    // biome-ignore lint/suspicious/useAwait: This is a NextAuth callback
     async session({ session, token }) {
-      session = token.user as Session
-
+      if (token) {
+        session.user = {
+          id: token.id as string,
+          email: token.email as string,
+          name: token.name as string,
+          username: token.username as string
+        }
+      }
       return session
     },
   },

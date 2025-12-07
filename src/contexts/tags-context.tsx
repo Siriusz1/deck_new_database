@@ -1,11 +1,12 @@
+// src/contexts/tags-context.tsx
 'use client'
 
-import { type ReactNode, createContext, useCallback } from 'react'
+import { type ReactNode, createContext } from 'react'
 
 import type { Professor } from '@/entities/professor'
 import type { Subject } from '@/entities/subject'
 import type { Trail } from '@/entities/trail'
-import { instance } from '@/lib/axios'
+import { supabase } from '@/lib/supabase'
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
 
 interface TagsContextProps {
@@ -21,43 +22,43 @@ interface TagsProvidesProps {
 }
 
 export function TagsProvider({ children }: TagsProvidesProps) {
-  const fetchTrails = useCallback(async () => {
-    const { data } = await instance.get<{
-      trails: Trail[]
-    }>('/trails')
-
-    return data.trails
-  }, [])
-
-  const fetchProfessors = useCallback(async () => {
-    const { data } = await instance.get<{
-      professors: Professor[]
-    }>('/professors')
-
-    return data.professors
-  }, [])
-
-  const fetchSubjects = useCallback(async () => {
-    const { data } = await instance.get<{
-      subjects: Subject[]
-    }>('/subjects')
-
-    return data.subjects
-  }, [])
-
   const trails = useQuery<Trail[]>({
     queryKey: ['trails'],
-    queryFn: fetchTrails,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trails')
+        .select('*')
+        .order('name')
+
+      if (error) throw error
+      return data
+    },
   })
 
   const professors = useQuery<Professor[]>({
     queryKey: ['professors'],
-    queryFn: fetchProfessors,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('professors')
+        .select('*')
+        .order('name')
+
+      if (error) throw error
+      return data
+    },
   })
 
   const subjects = useQuery<Subject[]>({
     queryKey: ['subjects'],
-    queryFn: fetchSubjects,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name')
+
+      if (error) throw error
+      return data
+    },
   })
 
   return (

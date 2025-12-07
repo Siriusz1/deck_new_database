@@ -1,3 +1,4 @@
+// src/contexts/authenticated-student-context.tsx
 'use client'
 
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
@@ -5,7 +6,7 @@ import { useSession } from 'next-auth/react'
 import { type ReactNode, createContext, useCallback } from 'react'
 
 import type { Profile } from '@/entities/profile'
-import { instance } from '@/lib/axios'
+import { getStudentProfile } from '@/functions/students'
 
 interface AuthenticatedStudentContextProps {
   student: UseQueryResult<Profile, Error>
@@ -24,19 +25,18 @@ export function AuthenticatedStudentProvider({
   const { data: session } = useSession()
 
   const getStudentDetails = useCallback(async () => {
-    instance.defaults.headers.common.Authorization = `Bearer ${session?.token}`
+    if (!session?.user?.username) {
+      throw new Error('No authenticated user')
+    }
 
-    const { data } = await instance.get<{
-      details: Profile
-    }>('/students/me')
-
-    return data.details
+    const profile = await getStudentProfile(session.user.username)
+    return profile
   }, [session])
 
   const student = useQuery({
-    queryKey: ['students', 'me'],
+    queryKey: ['students', 'me', session?.user?.username],
     queryFn: getStudentDetails,
-    enabled: Boolean(session),
+    enabled: Boolean(session?.user?.username),
   })
 
   return (
@@ -48,4 +48,25 @@ export function AuthenticatedStudentProvider({
       {children}
     </AuthenticatedStudentContext.Provider>
   )
+}
+
+// src/types/next-auth.d.ts
+import NextAuth from 'next-auth'
+
+declare module 'next-auth' {
+  interface Session {
+    user: {
+      id: string
+      email: string
+      name: string
+      username: string
+    }
+  }
+
+  interface User {
+    id: string
+    email: string
+    name: string
+    username: string
+  }
 }
