@@ -51,9 +51,7 @@ export function usePublishProject() {
     }
 
     const draftData = await getDraftDetails(draftId)
-
     methods.reset(draftData)
-
     return draftData
   }
 
@@ -82,24 +80,26 @@ export function usePublishProject() {
   async function handleSaveDraft() {
     const project = methods.getValues()
 
+    // Validar se temos o student
+    if (!student.data?.id) {
+      throw new Error('Usuário não autenticado')
+    }
+
     if (draftId) {
       await saveDraft(draftId, project)
 
       if (project.banner) {
-        const formData = new FormData()
-        formData.append('file', project.banner)
-        uploadProjectBanner(formData, draftId)
+        await uploadProjectBanner(project.banner, draftId)
       }
 
       return router.push('/')
     }
 
-    const createdDraftId = await createDraft(project)
+    // Criar novo draft
+    const createdDraftId = await createDraft(project, student.data.id)
 
     if (project.banner) {
-      const formData = new FormData()
-      formData.append('file', project.banner)
-      await uploadProjectBanner(formData, createdDraftId)
+      await uploadProjectBanner(project.banner, createdDraftId)
     }
 
     return router.push('/')
@@ -112,12 +112,19 @@ export function usePublishProject() {
   async function handlePublishProject() {
     const project = methods.getValues()
 
-    const projectId = await publishProject(project, draftId)
+    // Validar se temos o student
+    if (!student.data?.id) {
+      throw new Error('Usuário não autenticado')
+    }
+
+    const projectId = await publishProject(
+      project,
+      student.data.id,
+      draftId
+    )
 
     if (project.banner) {
-      const formData = new FormData()
-      formData.append('file', project.banner)
-      await uploadProjectBanner(formData, projectId)
+      await uploadProjectBanner(project.banner, projectId)
     }
 
     return router.push('/')
